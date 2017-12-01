@@ -34,6 +34,7 @@ type CommonAPIClient interface {
 	ClientVersion() string
 	DaemonHost() string
 	ServerVersion(ctx context.Context) (types.Version, error)
+	ServerVersionWithRaw(ctx context.Context) (types.Version, []byte, error)
 	NegotiateAPIVersion(ctx context.Context)
 	NegotiateAPIVersionPing(types.Ping)
 	DialSession(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error)
