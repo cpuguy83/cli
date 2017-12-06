@@ -1,6 +1,7 @@
 package system
 
 import (
+	"fmt"
 	"runtime"
 	"time"
 
@@ -35,7 +36,7 @@ Server:
  {{$component.Name}}:
   {{- if eq $component.Name "Engine" }}
   Version:	{{.Version}}
-  API version:	{{index .Details "APIVersion"}} (minimum version {{index .Details "MinAPIVersion"}})
+  API version:	{{index .Details "ApiVersion"}} (minimum version {{index .Details "MinAPIVersion"}})
   Go version:	{{index .Details "GoVersion"}}
   Git commit:	{{index .Details "GitCommit"}}
   Built:	{{index .Details "BuildTime"}}
@@ -73,42 +74,6 @@ type clientVersion struct {
 	BuildTime         string `json:",omitempty"`
 }
 
-/*
-type serverVersion struct {
-	types.Version
-}
-
-func (sv *serverVersion) UnmarshalJSON(data []byte) error {
-	v := &sv.Version
-	if err := json.Unmarshal(data, v); err != nil {
-		return err
-	}
-	foundEngine := false
-	for _, component := range sv.Components {
-		if component.Name == "Engine" {
-			foundEngine = true
-			break
-		}
-	}
-	if !foundEngine {
-		sv.Components = append(sv.Components, types.ComponentVersion{
-			Name:    "Engine",
-			Version: v.Version,
-			Details: map[string]string{
-				"APIVersion":    v.APIVersion,
-				"MinAPIVersion": v.MinAPIVersion,
-				"GitCommit":     v.GitCommit,
-				"GoVersion":     v.GoVersion,
-				"Os":            v.Os,
-				"Arch":          v.Arch,
-				"BuildTime":     v.BuildTime,
-			},
-		})
-	}
-	return nil
-}
-*/
-
 // ServerOK returns true when the client could connect to the docker server
 // and parse the information received. It returns false otherwise.
 func (v versionInfo) ServerOK() bool {
@@ -133,6 +98,14 @@ func NewVersionCommand(dockerCli *command.DockerCli) *cobra.Command {
 	flags.StringVarP(&opts.format, "format", "f", "", "Format the output using the given Go template")
 
 	return cmd
+}
+
+func reformatDate(buildTime string) string {
+	t, errTime := time.Parse(time.RFC3339Nano, buildTime)
+	if errTime == nil {
+		return t.Format(time.ANSIC)
+	}
+	return buildTime
 }
 
 func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
@@ -163,8 +136,9 @@ func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
 	}
 	vd.Client.Platform.Name = cli.PlatformName
 
-	// TODO: simply export Get to retrieve raw response
-	//_, body, err := dockerCli.Client().ServerVersion(ctx)
+	// first we need to make BuildTime more human friendly
+	vd.Client.BuildTime = reformatDate(vd.Client.BuildTime)
+
 	sv, err := dockerCli.Client().ServerVersion(ctx)
 	if err == nil {
 		vd.Server = &sv
@@ -172,9 +146,14 @@ func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
 		for _, component := range sv.Components {
 			if component.Name == "Engine" {
 				foundEngine = true
+				buildTime, ok := component.Details["BuildTime"]
+				if ok {
+					component.Details["BuildTime"] = reformatDate(buildTime)
+				}
 				break
 			}
 		}
+
 		if !foundEngine {
 			vd.Server.Components = append(vd.Server.Components, types.ComponentVersion{
 				Name:    "Engine",
@@ -186,23 +165,10 @@ func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
 					"GoVersion":     sv.GoVersion,
 					"Os":            sv.Os,
 					"Arch":          sv.Arch,
-					"BuildTime":     sv.BuildTime,
+					"BuildTime":     reformatDate(vd.Server.BuildTime),
+					"Experimental":  fmt.Sprintf("%t", sv.Experimental),
 				},
 			})
-		}
-		//err = json.NewDecoder(bytes.NewReader(body)).Decode(&vd.Server)
-	}
-
-	// first we need to make BuildTime more human friendly
-	t, errTime := time.Parse(time.RFC3339Nano, vd.Client.BuildTime)
-	if errTime == nil {
-		vd.Client.BuildTime = t.Format(time.ANSIC)
-	}
-
-	if vd.ServerOK() {
-		t, errTime = time.Parse(time.RFC3339Nano, vd.Server.BuildTime)
-		if errTime == nil {
-			vd.Server.BuildTime = t.Format(time.ANSIC)
 		}
 	}
 
