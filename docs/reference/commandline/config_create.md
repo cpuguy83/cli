@@ -1,7 +1,7 @@
 ---
-title: "secret create"
-description: "The secret create command description and usage"
-keywords: ["secret, create"]
+title: "config create"
+description: "The config create command description and usage"
+keywords: ["config, create"]
 ---
 
 <!-- This file is maintained within the docker/cli GitHub
@@ -13,66 +13,65 @@ keywords: ["secret, create"]
      will be rejected.
 -->
 
-# secret create
+# config create
 
 ```Markdown
-Usage:	docker secret create [OPTIONS] SECRET file|-
+Usage:	docker config create [OPTIONS] SECRET file|-
 
-Create a secret from a file or STDIN as content
+Create a config from a file or STDIN as content
 
 Options:
       --help                    Print usage
-  -l, --label list              Secret labels (default [])
-  -d, --driver string           Secret Driver
-      --template-driver string  Driver to use to parse templated secrets
+  -l, --label list              Config labels (default [])
+      --template-driver string  Driver to use to parse templated configs
 ```
 
 ## Description
 
-Creates a secret using standard input or from a file for the secret content. You must run this command on a manager node. 
+Creates a config using standard input or from a file for the config content. You must run this command on a manager node. 
 
-For detailed information about using secrets, refer to [manage sensitive data with Docker secrets](https://docs.docker.com/engine/swarm/secrets/).
+For detailed information about using configs, refer to [manage sensitive data with Docker configs](https://docs.docker.com/engine/swarm/configs/).
 
 ## Examples
 
-### Create a secret
+### Create a config
 
 ```bash
-$ echo <secret> | docker secret create my_secret -
+$ echo <config> | docker config create my_config -
 
 onakdyv307se2tl7nl20anokv
 
-$ docker secret ls
+$ docker config ls
 
 ID                          NAME                CREATED             UPDATED
-onakdyv307se2tl7nl20anokv   my_secret           6 seconds ago       6 seconds ago
+onakdyv307se2tl7nl20anokv   my_config           6 seconds ago       6 seconds ago
 ```
 
-### Create a secret with a file
+### Create a config with a file
 
 ```bash
-$ docker secret create my_secret ./secret.json
+$ docker config create my_config ./config.json
 
 dg426haahpi5ezmkkj5kyl3sn
 
-$ docker secret ls
+$ docker config ls
 
 ID                          NAME                CREATED             UPDATED
-dg426haahpi5ezmkkj5kyl3sn   my_secret           7 seconds ago       7 seconds ago
+dg426haahpi5ezmkkj5kyl3sn   my_config           7 seconds ago       7 seconds ago
 ```
 
-### Create a secret with labels
+### Create a config with labels
 
 ```bash
-$ docker secret create --label env=dev \
+$ docker config create --label env=dev \
                        --label rev=20170324 \
-                       my_secret ./secret.json
+                       my_config ./config.json
 
 eo7jnzguqgtpdah3cm5srfb97
 ```
 
 ```none
-$ docker secret inspect my_secret
+$ docker config inspect my_config
 
 [
     {
@@ -83,7 +82,7 @@ $ docker secret inspect my_secret
         "CreatedAt": "2017-03-24T08:15:09.735271783Z",
         "UpdatedAt": "2017-03-24T08:15:09.735271783Z",
         "Spec": {
-            "Name": "my_secret",
+            "Name": "my_config",
             "Labels": {
                 "env": "dev",
                 "rev": "20170324"
@@ -93,9 +92,9 @@ $ docker secret inspect my_secret
 ]
 ```
 
-### Create a templated secret
+### Create a templated config
 
-You can create a secret using templates which reference other secrets or configs.
+You can create a config using templates which reference other configs or secrets.
 A `template-driver` flag is provided to control this.
 
 Currently only the `golang` driver is supported, which has two keywords:
@@ -108,39 +107,39 @@ to include.
 
 Example template: `Hello {{ config "name" }}, your passwod is {{ secret "password"}}`
 
-More complex examples can be created by taking advantage of 
+More complex examples can be created by taking advantage of
 [Go's templating engine](https://golang.org/pkg/text/template/)
 
 Usage:
 
 ```bash
-$ docker secret create my_secret1 ./secret1.json
+$ docker config create my_config1 ./config1.json
 eo7jnzguqgtpdah3cm5srfb97
-$ docker secret create my_secret1 ./secret1.json
+$ docker config create my_config1 ./config1.json
 dg426haahpi5ezmkkj5kyl3sn
-$ echo '{{ secret "data1"}}{{ secret "data2"}} | docker secret create my_templated_secret -
+$ echo '{{ config "data1"}}{{ config "data2"}} | docker config create my_templated_config -
 onakdyv307se2tl7nl20anokv
 ```
 
-Notice that the secrets referenced template are not the names of the real secret,
+Notice that the configs referenced template are not the names of the real config,
 instead these are evaluated at runtime. Here is an example of how to use this
-templated secret:
+templated config:
 
 ```bash
 $ docker service create \
-  --secret source=my_secret1,target=data1 \
-  --secret source=my_secret_2,target=data2 \
-	--secret source=my_templated_secret,target=combined \
+  --config source=my_config1,target=data1 \
+  --config source=my_config_2,target=data2 \
+	--config source=my_templated_config,target=combined \
 	busybox top
 xc4zutdyh63abg17osqgntc1n
 ```
 
-Each of the secrets, or configs, referenced in the template must be used in the
+Each of the configs, or secrets, referenced in the template must be used in the
 service, and the targets must match what is defined in the template rather than
 the real name.
 
 ## Related commands
 
-* [secret inspect](secret_inspect.md)
-* [secret ls](secret_ls.md)
-* [secret rm](secret_rm.md)
+* [config inspect](config_inspect.md)
+* [config ls](config_ls.md)
+* [config rm](config_rm.md)
