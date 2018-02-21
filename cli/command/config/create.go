@@ -16,9 +16,10 @@ import (
 )
 
 type createOptions struct {
-	name   string
-	file   string
-	labels opts.ListOpts
+	name           string
+	file           string
+	labels         opts.ListOpts
+	templateDriver string
 }
 
 func newConfigCreateCommand(dockerCli command.Cli) *cobra.Command {
@@ -38,6 +39,9 @@ func newConfigCreateCommand(dockerCli command.Cli) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.VarP(&createOpts.labels, "label", "l", "Config labels")
+
+	flags.StringVarP(&createOpts.templateDriver, "template-driver", "", "", "Driver to use to parse templated config")
+	flags.SetAnnotation("template-driver", "version", []string{"1.37"})
 
 	return cmd
 }
@@ -67,6 +71,12 @@ func runConfigCreate(dockerCli command.Cli, options createOptions) error {
 			Labels: opts.ConvertKVStringsToMap(options.labels.GetAll()),
 		},
 		Data: configData,
+	}
+
+	if options.templateDriver != "" {
+		spec.Templating = &swarm.Driver{
+			Name: options.templateDriver,
+		}
 	}
 
 	r, err := client.ConfigCreate(ctx, spec)

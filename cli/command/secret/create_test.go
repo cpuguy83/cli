@@ -133,3 +133,47 @@ func TestSecretCreateWithLabels(t *testing.T) {
 	assert.NoError(t, cmd.Execute())
 	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
 }
+
+func TestSecretCreateWithTemplate(t *testing.T) {
+	driver := "testdriver"
+	name := "testsecret"
+	cli := test.NewFakeCli(&fakeClient{
+		secretCreateFunc: func(spec swarm.SecretSpec) (types.SecretCreateResponse, error) {
+			if spec.Templating == nil {
+				return types.SecretCreateResponse{}, errors.New("templating should not be nil")
+			}
+			if spec.Templating.Name != driver {
+				return types.SecretCreateResponse{}, errors.Errorf("expected template driver %q, got %q", driver, spec.Templating.Name)
+			}
+
+			return types.SecretCreateResponse{
+				ID: "ID-" + spec.Name,
+			}, nil
+		},
+	})
+
+	cmd := newSecretCreateCommand(cli)
+	cmd.SetArgs([]string{name, filepath.Join("testdata", secretDataFile)})
+	cmd.Flags().Set("template-driver", driver)
+	assert.NoError(t, cmd.Execute())
+	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
+}
+
+func TestSecretCreateNoTemplate(t *testing.T) {
+	name := "testsecret"
+	cli := test.NewFakeCli(&fakeClient{
+		secretCreateFunc: func(spec swarm.SecretSpec) (types.SecretCreateResponse, error) {
+			if spec.Templating != nil {
+				return types.SecretCreateResponse{}, errors.New("templating should be nil")
+			}
+			return types.SecretCreateResponse{
+				ID: "ID-" + spec.Name,
+			}, nil
+		},
+	})
+
+	cmd := newSecretCreateCommand(cli)
+	cmd.SetArgs([]string{name, filepath.Join("testdata", secretDataFile)})
+	assert.NoError(t, cmd.Execute())
+	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
+}

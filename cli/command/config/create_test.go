@@ -105,3 +105,47 @@ func TestConfigCreateWithLabels(t *testing.T) {
 	assert.NoError(t, cmd.Execute())
 	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
 }
+
+func TestConfigCreateWithTemplate(t *testing.T) {
+	driver := "testdriver"
+	name := "testconfig"
+	cli := test.NewFakeCli(&fakeClient{
+		configCreateFunc: func(spec swarm.ConfigSpec) (types.ConfigCreateResponse, error) {
+			if spec.Templating == nil {
+				return types.ConfigCreateResponse{}, errors.New("templating should not be nil")
+			}
+			if spec.Templating.Name != driver {
+				return types.ConfigCreateResponse{}, errors.Errorf("expected template driver %q, got %q", driver, spec.Templating.Name)
+			}
+
+			return types.ConfigCreateResponse{
+				ID: "ID-" + spec.Name,
+			}, nil
+		},
+	})
+
+	cmd := newConfigCreateCommand(cli)
+	cmd.SetArgs([]string{name, filepath.Join("testdata", configDataFile)})
+	cmd.Flags().Set("template-driver", driver)
+	assert.NoError(t, cmd.Execute())
+	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
+}
+
+func TestConfigCreateNoTemplate(t *testing.T) {
+	name := "testconfig"
+	cli := test.NewFakeCli(&fakeClient{
+		configCreateFunc: func(spec swarm.ConfigSpec) (types.ConfigCreateResponse, error) {
+			if spec.Templating != nil {
+				return types.ConfigCreateResponse{}, errors.New("templating should be nil")
+			}
+			return types.ConfigCreateResponse{
+				ID: "ID-" + spec.Name,
+			}, nil
+		},
+	})
+
+	cmd := newConfigCreateCommand(cli)
+	cmd.SetArgs([]string{name, filepath.Join("testdata", configDataFile)})
+	assert.NoError(t, cmd.Execute())
+	assert.Equal(t, "ID-"+name, strings.TrimSpace(cli.OutBuffer().String()))
+}
